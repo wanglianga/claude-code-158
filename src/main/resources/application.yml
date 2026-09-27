@@ -1,0 +1,149 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: cityoil-trace
+  # 默认（本地）profile：H2 PostgreSQL 兼容模式 + 内存事件总线
+  profiles:
+    active: local
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: true
+    properties:
+      hibernate:
+        format_sql: false
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    time-zone: Asia/Shanghai
+
+---
+spring:
+  config:
+    activate:
+      on-profile: local
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration
+  datasource:
+    url: jdbc:h2:mem:cityoil;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+cityoil:
+  kafka-enabled: false
+  event-topic: cityoil-events
+  dispatch:
+    average-speed-kmh: 30
+    stop-minutes: 20
+    late-grace-minutes: 15
+    # 核心商圈货车限行时段（早/晚高峰）与限行区域
+    peak-am-start: "07:00"
+    peak-am-end: "09:00"
+    peak-pm-start: "17:00"
+    peak-pm-end: "19:00"
+    restricted-districts: CORE_A,CORE_B
+  weights:
+    # 运输损耗率告警阈值（百分比）
+    loss-rate-threshold-pct: 5.0
+    # 损耗率合理上限（超过判异常，须说明闭环后才能关单）
+    loss-rate-hard-limit-pct: 10.0
+  settlement:
+    unit-price-per-kg: 3.0
+  risk:
+    min-history-months: 3
+    output-ratio-threshold: 0.4
+    frequency-ratio-threshold: 0.5
+
+---
+spring:
+  config:
+    activate:
+      on-profile: kafka
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:cityoil}
+    driver-class-name: org.postgresql.Driver
+    username: ${DB_USER:cityoil}
+    password: ${DB_PASSWORD:cityoil}
+  jpa:
+    hibernate:
+      ddl-auto: update
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP:localhost:9092}
+    producer:
+      acks: all
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    consumer:
+      group-id: cityoil-trace
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
+cityoil:
+  kafka-enabled: true
+  event-topic: cityoil-events
+  dispatch:
+    average-speed-kmh: 30
+    stop-minutes: 20
+    late-grace-minutes: 15
+    peak-am-start: "07:00"
+    peak-am-end: "09:00"
+    peak-pm-start: "17:00"
+    peak-pm-end: "19:00"
+    restricted-districts: CORE_A,CORE_B
+  weights:
+    loss-rate-threshold-pct: 5.0
+    loss-rate-hard-limit-pct: 10.0
+  settlement:
+    unit-price-per-kg: 3.0
+  risk:
+    min-history-months: 3
+    output-ratio-threshold: 0.4
+    frequency-ratio-threshold: 0.5
+
+---
+spring:
+  config:
+    activate:
+      on-profile: test
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.kafka.KafkaAutoConfiguration
+  datasource:
+    url: jdbc:h2:mem:cityoil-test;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+
+cityoil:
+  kafka-enabled: false
+  event-topic: cityoil-events-test
+  dispatch:
+    average-speed-kmh: 30
+    stop-minutes: 20
+    late-grace-minutes: 15
+    peak-am-start: "07:00"
+    peak-am-end: "09:00"
+    peak-pm-start: "17:00"
+    peak-pm-end: "19:00"
+    restricted-districts: CORE_A,CORE_B
+  weights:
+    loss-rate-threshold-pct: 5.0
+    loss-rate-hard-limit-pct: 10.0
+  settlement:
+    unit-price-per-kg: 3.0
+  risk:
+    min-history-months: 3
+    output-ratio-threshold: 0.4
+    frequency-ratio-threshold: 0.5
